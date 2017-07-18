@@ -22,7 +22,7 @@ const oauth2 = simpleOauthModule.create({
 
 // Authorization uri definition
 const authorizationUri = oauth2.authorizationCode.authorizeURL({
-  redirect_uri: 'http://sample-desk.herokuapp.com/callback',
+  redirect_uri: 'https://sample-desk.herokuapp.com/callback',
   scope: 'ZohoSupport.tickets.ALL',
   state: '3(#0/!~',
 });
