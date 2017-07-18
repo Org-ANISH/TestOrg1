@@ -1,7 +1,9 @@
-var express = require('express')
+var express = require('express');
 var bodyParser = require('body-parser');
-var app = express()
-var https = require('https');
+var app = express();
+var https = require('follow-redirects').https;
+
+
 
 var ticketUrl = {
   host: 'desk.zoho.com',
@@ -37,7 +39,6 @@ app.get('/oauth' , function(request, response){
   		console.log("Node app is running at localhost:" + resp)
 		resp.on('data', function(chunk){
   	 		console.log('BODY: ' + chunk)
-  	 		resp.send("URL STATUS IS " + resp.statusCode)
   		});
 	})
 })
