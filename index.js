@@ -1,65 +1,64 @@
-var express = require('express');
-var bodyParser = require('body-parser');
-var app = express();
-var https = require('follow-redirects').https;
+'use strict';
 
+const express = require('express');
+const simpleOauthModule = require('simple-oauth2');
 
+const app = express();
+const oauth2 = simpleOauthModule.create({
+  client: {
+    id: '1000.GGXNNVQJA8OC0759779T38C4AT3OGD',
+    secret: 'd2966b8ed2e65ba05c3ce76220a63ef1cc74d21d61',
+  },
+  auth: {
+    tokenHost: 'https://accounts.zoho.com',
+    tokenPath: '/oauth/v2/token',
+    authorizePath: '/oauth/v2/auth',
+  },
+});
 
-var ticketUrl = {
-  host: 'desk.zoho.com',
-  port: 443,
-  path: '/api/v1/tickets/4000537054497?authtoken=8e0f373acc2e43ca95d8413e5f2537bb&orgId=4241905'
-};
+// Authorization uri definition
+const authorizationUri = oauth2.authorizationCode.authorizeURL({
+  redirect_uri: 'http://sample-desk.herokuapp.com/callback',
+  scope: 'ZohoSupport.tickets.ALL',
+  state: '3(#0/!~',
+});
 
-app.set('port', (process.env.PORT || 5000))
-app.use(express.static(__dirname + '/public'))
-app.use(bodyParser.json())
+// Initial page redirecting to Github
+app.get('/auth', (req, res) => {
+  console.log(authorizationUri);
+  res.redirect(authorizationUri);
+});
 
-app.get('/tickets', function(request, response) {
-	https.get(ticketUrl, function(response){		
-  		console.log("Node app is running at Status:" + response.statusCode)
-  		console.log("Node app is running at localhost:" + response)
-  		response.on('data', function(chunk){
-  	 		console.log('BODY: ' + chunk)
-  	 		response.send("URL STATUS IS " + response.statusCode)
-  		});
-	}).on("error", function(e){
- 		console.log("Got error: " + e.message);
-	});
-})
+// Callback service parsing the authorization token and asking for the access token
+app.get('/callback', (req, res) => {
+  const code = req.query.code;
+  const options = {
+    code,
+  };
 
-app.get('/oauth' , function(request, response){
-	var oauthURL = {
-		host: 'accounts.zoho.com',
-		port: 443,
-		path: '/oauth/v2/auth?response_type=code&client_id=1000.GGXNNVQJA8OC0759779T38C4AT3OGD&scope=ZohoSupport.tickets.ALL&redirect_uri=https://sample-desk.herokuapp.com/oauthrequest'
-	}
-	https.get(oauthURL, function(resp) {
-		console.log("Node app is running at Status:" + resp.statusCode)
-  		console.log("Node app is running at localhost:" + resp)
-		resp.on('data', function(chunk){
-  	 		console.log('BODY: ' + chunk)
-  		});
-	})
-})
+  oauth2.authorizationCode.getToken(options, (error, result) => {
+    if (error) {
+      console.error('Access Token Error', error.message);
+      return res.json('Authentication failed');
+    }
 
-app.get('/oauthrequest', function(request, response){
-	var code = request.query.code
-	var redirectURL = {
-		host : 'accounts.zoho.com',
-		port : '443',
-		method : 'POST',
-		path : '/oauth/v2/token?grant_type=authorization_code&scope=ZohoSupport.tickets.ALL&client_id=1000.GGXNNVQJA8OC0759779T38C4AT3OGD&client_secret=d2966b8ed2e65ba05c3ce76220a63ef1cc74d21d61&redirect_uri=https://sample-desk.herokuapp.com/oauthrequest&code='+code
-	}
-	https.request(redirectURL, function(request, response) {
-		response.on('data', function(chunk){
-  	 		console.log('BODY: ' + chunk)
-  	 		response.send("URL STATUS IS " + response.statusCode)
-  		});
-	})
-	console.log(code);
-})
+    console.log('The resulting token: ', result);
+    const token = oauth2.accessToken.create(result);
 
-app.listen(app.get('port'), function() {
-  console.log("Node app is running at localhost:" + app.get('port'))
-})
+    return res
+      .status(200)
+      .json(token);
+  });
+});
+
+app.get('/success', (req, res) => {
+  res.send('');
+});
+
+app.get('/', (req, res) => {
+  res.send('Hello<br><a href="/auth">Log in with Github</a>');
+});
+
+app.listen(3000, () => {
+  console.log('Express server started on port 3000'); // eslint-disable-line
+});
